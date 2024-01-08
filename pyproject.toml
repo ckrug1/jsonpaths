@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "json-paths"
+version = "0.0.1"
+description = "A library for working with JSON paths."
+requires-python = ">=3.8"
+dependencies = [
+    "pandas"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/jsonpaths/*.py",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jsonpaths"]
