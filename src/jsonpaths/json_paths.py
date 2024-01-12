@@ -1,3 +1,4 @@
+import stat
 import pandas as pd
 from datetime import datetime
 from dataclasses import dataclass, field
@@ -6,10 +7,15 @@ from copy import deepcopy
 import string 
 import random 
 from pprint import pprint
+from pathlib import Path 
 from .jshcema import JPSchema
 from .jshcema import SchemaTypes
 from .jshcema import OBJECT_IN_ARRAY, OBJECT_IN_OBJECT, ARRAY_IN_OBJECT, FIELD_IN_OBJECT
 from copy import deepcopy
+from dateutil import parser
+import json 
+
+
 @dataclass
 class JsonPaths:
     """
@@ -36,7 +42,6 @@ class JsonPaths:
     json_file: Any
     rootname: str = 'root'
     delim: str = '.'
-    allitems: Dict[str, Any] = field(default_factory=dict)
     json_schema: Optional[List[Dict[str, Any]]] = None
     flattened_obj: List[Dict] = field(default_factory=list)
     object_descendants: List[str] = field(default_factory=list)
@@ -45,6 +50,7 @@ class JsonPaths:
     _fallback_delimter:str = field(default='<>')
     _previous_delim:str = field(default=None)
     _usedfallback:bool = field(default=False)
+    _is_schema_loaded:bool = field(default=False)
 
     @staticmethod
     def _analyze_types(value):
@@ -60,17 +66,32 @@ class JsonPaths:
         elif isinstance(value, int):
             return "INTEGER"
         elif isinstance(value, float):
-            return "DECIMAL"
+            return "FLOAT"
+        
         elif isinstance(value,type(None)):
             return "NULL"
         elif isinstance(value, str):
             try:
-                datetime.fromisoformat(value)
+                #datetime.fromisoformat(value)
+                dt = parser.isoparse(value)
+                #self._try_date_convert(value)
+                return "DATETIME"
+            except ValueError:
+                pass 
+            try:
+                datetime.strptime(value, '%Y-%m-%dT%H:%M:%SZ')
                 return "DATETIME"
             except ValueError:
                 return "STRING"
+                
         
         return "UNKNOWN"
+    
+    # @staticmethod
+    # def _try_date_convert(value):
+    #     dt = parser.parse(value)
+        
+    
 
     @staticmethod
     def _find_occur(array_of_things: List):
@@ -104,6 +125,11 @@ class JsonPaths:
             isnullable = True 
             if len(list(type_dict.keys())) < 2:
                 return dict(item_type='STRING',is_nullable=isnullable)
+            del type_dict["NULL"]
+            # ttl_samples = sum([v for v in type_dict.values()])
+            # null_samples = type_dict.get("NULL")
+            # if ttl_samples == null_samples:
+            #     return dict(item_type='STRING',is_nullable=isnullable)
         for itemkey, occurences in type_dict.items():
             if occurences > valcount:
                 type_result['item_type'] = itemkey
@@ -217,6 +243,9 @@ class JsonPaths:
         Returns:
             List[Dict[str, Any]]: The generated JSON schema as a list of dictionaries.
         """
+        if self._is_schema_loaded:
+            raise Exception("Schema is already loaded, re-initialize the class to load schema again.")
+            
         if not isinstance(self.json_file, list):
             self.json_file = [self.json_file]
 
@@ -228,6 +257,7 @@ class JsonPaths:
                 fld_val.update(type_result)
             del fld_val['sample_values']
         self.json_schema = [v for v in self.jpschema.schema_obj.values()]
+        self._is_schema_loaded = True 
         
         
         return self.json_schema
@@ -262,6 +292,8 @@ class JsonPaths:
                          new_json_file:Any = None, 
                          root_topic: str = 'root', 
                          collapse_parent_fields:list = [],
+                         ignore_fields:list = [],
+                         include_fields:list = [],
                          flatten_inner_objects:bool=True):
         """
         Retrieves objects from the JSON data based on a given path.
@@ -362,7 +394,7 @@ class JsonPaths:
                     next_path = current_obj_schema.get('next_path') if isinstance(o,dict) else item_path
                     find_level(item_path=next_path, 
                                current_obj=item)
-
+        
         if not self.json_schema:
             self.generate_schema()
         if new_json_file:
@@ -379,12 +411,29 @@ class JsonPaths:
         json_dict = [{root_topic:self.json_file}]
     
         find_level(root_topic, json_dict)
+        if ignore_fields:
+            self.flattened_obj = [{k:v for k,v in x.items() if k not in ignore_fields} for x in self.flattened_obj]
+        if include_fields:
+            self.flattened_obj = [{k:v for k,v in x.items() if k in include_fields} for x in self.flattened_obj]
         if return_type == 'records':
             return self.flattened_obj
         elif return_type == 'dataframe':
             return pd.DataFrame(self.flattened_obj)
 
-
+    def save_schema_to_file(self,file_path:str,file_name:str=None):
+        file_path = Path(file_path)
+        if not file_path.exists(): #Checks if parent folders exist, if not creates them. 
+                file_path.mkdir(parents=True,exist_ok=False)
+        file_path = file_path.joinpath(file_name)
+        with open(file_path,'w') as sfile:
+            json.dump(self.jpschema.schema_obj,sfile,indent=3)
+            
+    def load_schema_from_file(self,file_path:str):
+        with open(file_path,'r') as jfile:
+            schema_obj = json.load(jfile)
+        self.jpschema.schema_obj = schema_obj
+        self.json_schema = [v for v in self.jpschema.schema_obj.values()]
+        self._is_schema_loaded = True 
 
 
 
@@ -442,8 +491,8 @@ def enhance_json_schema(all_items:dict) -> dict:
 
 # Example usage:
 # refreshablespath = './data/Refreshables/2023/11/refreshables_20231101_175127978.json'
-# refreshablespath = './data/Refreshables/2023/11/refreshables_20231115_173559991.json'
-# scanpath = './src/data/scan_results/workspace_scan_results_20230601_130851205.json'
+scanpath = '/workspaces/jsonpaths/dataset_refreshes_part_0_20240105_162009099.json'
+# scanpath = '/workspaces/jsonpaths/usv_users.json'
 
 # with open(scanpath, 'r') as f:
 #     jfile = json.load(f)
