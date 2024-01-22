@@ -1,7 +1,7 @@
 import stat
 import pandas as pd
 from datetime import datetime
-from dataclasses import KW_ONLY, dataclass, field
+from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 from copy import deepcopy 
 import string 
@@ -39,7 +39,6 @@ class JsonPaths:
         retrieve_objects(object_path, return_type='records', new_json_file=None, topic='root', collapse_parent_fields=[], flatten_inner_objects=True): Retrieves objects from the JSON data based on a given path.
     """
     json_file: Any
-    _: KW_ONLY
     rootname: str = 'root'
     delim: str = '.'
     sample_limit:int = field(default=500)

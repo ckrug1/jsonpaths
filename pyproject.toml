@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "json-paths"
-version = "0.0.7"
+version = "0.0.9"
 description = "A small library for working with JSON files"
 requires-python = ">=3.8"
 dependencies = [
