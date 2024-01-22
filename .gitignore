@@ -25,7 +25,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -160,3 +159,6 @@ cython_debug/
 #.idea/
 dataset_refreshes_part_0_20240105_162009099.json
 src/tests.ipynb
+tests/data/workspacescan_results_20231023_144526043.json
+tests/testin.ipynb
+tests/testing.py

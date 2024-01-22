@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "json-paths"
-version = "0.0.3"
-description = "A library for working with JSON paths."
+version = "0.0.7"
+description = "A small library for working with JSON files"
 requires-python = ">=3.8"
 dependencies = [
     "pandas"]
@@ -13,6 +13,7 @@ dependencies = [
 [tool.hatch.build.targets.sdist]
 include = [
   "src/jsonpaths/*.py",
+  "tests/*"
 ]
 
 [tool.hatch.build.targets.wheel]
